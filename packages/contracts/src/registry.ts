@@ -73,3 +73,47 @@ export function cargarRegistry(dir: string): ModuloRegistry[] {
     return r.data;
   });
 }
+
+/**
+ * Lo que necesitan los consumidores con versión fijada (policy-check en la CI de cada módulo): id, repo,
+ * estado y riesgo. Tolera campos que todavía no conoce, porque el registry vivo (main) puede ser más nuevo
+ * que el código fijado por SHA. La validación estricta del registry la hacen la CI de plataforma y la API.
+ */
+export const esquemaModuloResumen = z.looseObject({
+  id: z.string().regex(/^[a-z][a-z0-9-]{2,40}$/),
+  repo: z.string(),
+  estado: z.string(),
+  riesgo: z.enum(['bajo', 'medio', 'alto']),
+});
+export type ModuloResumen = z.infer<typeof esquemaModuloResumen>;
+
+export interface RegistryTolerante {
+  modulos: ModuloResumen[];
+  /** Archivos que ni siquiera cumplen el resumen: se informan, pero no bloquean a los demás módulos. */
+  invalidos: string[];
+}
+
+/** Carga el registry para consumidores fijados por SHA: un archivo roto o con campos nuevos no frena a los demás. */
+export function cargarRegistryTolerante(dir: string): RegistryTolerante {
+  let archivos: string[];
+  try {
+    archivos = readdirSync(dir).filter((f) => f.endsWith('.yaml')).sort();
+  } catch {
+    return { modulos: [], invalidos: [] };
+  }
+  const modulos: ModuloResumen[] = [];
+  const invalidos: string[] = [];
+  for (const archivo of archivos) {
+    let datos: unknown;
+    try {
+      datos = parse(readFileSync(join(dir, archivo), 'utf8'));
+    } catch {
+      invalidos.push(archivo);
+      continue;
+    }
+    const r = esquemaModuloResumen.safeParse(datos);
+    if (r.success && r.data.id === basename(archivo, '.yaml')) modulos.push(r.data);
+    else invalidos.push(archivo);
+  }
+  return { modulos, invalidos };
+}

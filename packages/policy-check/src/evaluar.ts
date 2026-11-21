@@ -1,7 +1,7 @@
 // Aplica el catálogo a un módulo: perfil según el registry, excepciones vigentes y resultado final.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ModuloRegistry } from '@plataforma/contracts';
+import type { ModuloResumen } from '@plataforma/contracts';
 import { parse } from 'yaml';
 import { CHECKS_POR_NOMBRE, type Falla } from './checks.js';
 import type { Catalogo, Excepcion, Perfil } from './configuracion.js';
@@ -26,7 +26,7 @@ export interface ResultadoEvaluacion {
 export interface Entrada {
   dir: string;
   repo: string;
-  registry: ModuloRegistry[];
+  registry: ModuloResumen[];
   catalogo: Catalogo;
   excepciones: Excepcion[];
   cuerpoPr: string | null;
@@ -35,7 +35,7 @@ export interface Entrada {
   repoPlantilla?: string | undefined;
 }
 
-const PERFIL: Record<ModuloRegistry['riesgo'], Perfil> = { bajo: 'B', medio: 'M', alto: 'A' };
+const PERFIL: Record<ModuloResumen['riesgo'], Perfil> = { bajo: 'B', medio: 'M', alto: 'A' };
 
 /** id del manifiesto (sin validar: ARQ-06 informa los errores). */
 function idDelManifiesto(dir: string): string | undefined {

@@ -1,7 +1,7 @@
 // Un check por política. Devuelve las fallas (vacío = cumple) o null si no aplica en este contexto.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { esquemaManifiesto, type ModuloRegistry } from '@plataforma/contracts';
+import { esquemaManifiesto, type ModuloResumen } from '@plataforma/contracts';
 import { parse } from 'yaml';
 import type { Perfil, Politica } from './configuracion.js';
 
@@ -15,8 +15,8 @@ export interface Falla {
 export interface ContextoCheck {
   dir: string;
   repo: string;
-  registry: ModuloRegistry[];
-  modulo: ModuloRegistry | undefined;
+  registry: ModuloResumen[];
+  modulo: ModuloResumen | undefined;
   perfil: Perfil;
   /** Cuerpo del PR; null si la ejecución no es de un PR. */
   cuerpoPr: string | null;

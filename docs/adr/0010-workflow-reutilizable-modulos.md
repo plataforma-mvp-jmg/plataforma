@@ -33,3 +33,12 @@ tienen que ser los mismos en todos los módulos y cambiar solo por decisión de 
 - La configuración de lint, tipos y cobertura sigue en el repo del módulo (con CODEOWNERS); moverla a
   paquetes compartidos de `plataforma` queda para cuando se publiquen (GitHub Packages, Fase 1.5).
 - `actionlint` 1.7.12 todavía no conoce `job.workflow_*` y da avisos falsos en esas líneas.
+
+## Actualización (21/11/2026, después de I4-4)
+
+Agregar `datos.base` al registry bloqueó los PR de todos los módulos: los controles fijados por SHA
+validaban el registry vivo (`main`) con un esquema viejo y estricto (`Unrecognized key: "base"`).
+Desde entonces `policy-check` usa `cargarRegistryTolerante`: valida solo lo que necesita (id, repo,
+estado, riesgo), tolera campos nuevos e ignora con un aviso los archivos de otros módulos que no pueda
+leer. La validación estricta del registry sigue en la CI de plataforma y en la API. Regla: un campo
+nuevo en el registry tiene que ser opcional para los consumidores fijados.
