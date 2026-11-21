@@ -7,7 +7,7 @@ duenos:
   product_owner: jmgarciarivoiro-tita
   responsable_tecnico: jmgarciarivoiro-tita
 repo: modulo-tareas-piloto
-plantilla: plantilla-modulo@0.2.0
+plantilla: plantilla-modulo@0.7.0
 estado: propuesto
 riesgo: bajo
 criticidad: baja
@@ -17,6 +17,7 @@ sox:
 datos:
   clasificacion: interna
   datos_personales: false
+  base: postgres
 agente:
   habilitado: false
 menu:
