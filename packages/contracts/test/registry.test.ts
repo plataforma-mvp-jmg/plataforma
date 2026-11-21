@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cargarRegistry } from '../src/index.js';
+import { cargarRegistry, cargarRegistryTolerante } from '../src/index.js';
 
 const base = `id: mod-a
 nombre: Módulo A
@@ -69,6 +69,29 @@ describe('cargarRegistry', () => {
   ])('rechaza: %s', (_c, archivo, contenido) => {
     writeFileSync(join(dir, archivo), contenido);
     expect(() => cargarRegistry(dir)).toThrow(/Registry inválido/);
+  });
+});
+
+describe('cargarRegistryTolerante (consumidores fijados por SHA)', () => {
+  let d: string;
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'reg-tol-'));
+  });
+
+  it('tolera campos que todavía no conoce e ignora archivos rotos de otros módulos', () => {
+    writeFileSync(join(d, 'mod-a.yaml'), base.replace('datos_personales: false }', 'datos_personales: false, base: postgres, campo_futuro: 1 }') + 'otro_campo_futuro: x\n');
+    writeFileSync(join(d, 'mod-b.yaml'), 'id: mod-b\nrepo: [roto');
+    writeFileSync(join(d, 'mod-c.yaml'), 'id: mod-c\nrepo: modulo-mod-c\n');
+    writeFileSync(join(d, 'otro-nombre.yaml'), base.replace('id: mod-a', 'id: mod-x'));
+    const r = cargarRegistryTolerante(d);
+    expect(r.modulos.map((m) => [m.id, m.repo, m.riesgo, m.estado])).toEqual([['mod-a', 'modulo-mod-a', 'bajo', 'en_desarrollo']]);
+    expect(r.invalidos).toEqual(['mod-b.yaml', 'mod-c.yaml', 'otro-nombre.yaml']);
+    // El estricto, en cambio, rechaza el registry entero.
+    expect(() => cargarRegistry(d)).toThrow(/Registry inválido/);
+  });
+
+  it('sin carpeta, vacío', () => {
+    expect(cargarRegistryTolerante(join(d, 'no-existe'))).toEqual({ modulos: [], invalidos: [] });
   });
 });
 

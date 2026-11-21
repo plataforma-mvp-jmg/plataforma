@@ -6,7 +6,7 @@
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { cargarRegistry } from '@plataforma/contracts';
+import { cargarRegistryTolerante } from '@plataforma/contracts';
 import { cargarCatalogo, cargarExcepciones } from './configuracion.js';
 import { evaluar } from './evaluar.js';
 import { anotaciones, markdown, paraIa } from './salida.js';
@@ -29,10 +29,14 @@ try {
   if (!a.plataforma || !a.repo) throw new Error('faltan --plataforma y --repo');
   const hoy = a.hoy ?? new Date().toISOString().slice(0, 10);
   const catalogo = cargarCatalogo(join(a.plataforma, 'policies/catalogo.yaml'));
+  // Registry vivo (main) con código fijado por SHA: se toleran campos nuevos y archivos de otros módulos que
+  // no se puedan leer. Si el que falla es el del propio módulo, ARQ-06 lo informa como "no está en el registry".
+  const registry = cargarRegistryTolerante(a.registry ?? join(a.plataforma, 'registry'));
+  for (const archivo of registry.invalidos) process.stdout.write(`::warning::registry: ${archivo} no se pudo leer; se ignora\n`);
   const resultado = evaluar({
     dir: a.modulo,
     repo: a.repo,
-    registry: cargarRegistry(a.registry ?? join(a.plataforma, 'registry')),
+    registry: registry.modulos,
     catalogo,
     excepciones: cargarExcepciones(a.excepciones ?? join(a.plataforma, 'policies/excepciones.yaml'), catalogo, hoy),
     cuerpoPr: a['pr-body'] ? readFileSync(a['pr-body'], 'utf8') : null,
