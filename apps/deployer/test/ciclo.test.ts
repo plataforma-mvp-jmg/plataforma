@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { modulosDesplegables, procesarModulo, type Contexto } from '../src/ciclo.js';
-import { AtestacionFalsa, DIGEST_A, DIGEST_B, DockerFalso, GitHubFalso, MapaFalso, ORG, modulo, saludFalsa, type DeploymentFalso } from './falsos.js';
+import { AtestacionFalsa, BaseFalsa, DIGEST_A, DIGEST_B, DockerFalso, GitHubFalso, MapaFalso, ORG, modulo, saludFalsa, type DeploymentFalso } from './falsos.js';
 
-function contexto(deps: DeploymentFalso[], o: { atestacion?: AtestacionFalsa; salud?: boolean; docker?: DockerFalso; entorno?: 'staging' | 'production' } = {}) {
+function contexto(deps: DeploymentFalso[], o: { atestacion?: AtestacionFalsa; salud?: boolean; docker?: DockerFalso; entorno?: 'staging' | 'production'; base?: BaseFalsa } = {}) {
   const gh = new GitHubFalso(deps);
   const docker = o.docker ?? new DockerFalso();
   const mapa = new MapaFalso();
@@ -10,6 +10,7 @@ function contexto(deps: DeploymentFalso[], o: { atestacion?: AtestacionFalsa; sa
   const logs: string[] = [];
   const ctx: Contexto = {
     org: ORG, entorno: o.entorno ?? 'staging', gh, docker, atestacion, salud: saludFalsa(o.salud ?? true), mapa,
+    ...(o.base ? { base: o.base } : {}),
     rangoPuertos: [4100, 4199], envModulo: { PLATFORM_JWKS_URL: 'http://host.docker.internal:8080/.well-known/jwks.json', PLATFORM_ISSUER: 'http://localhost:8080' },
     log: (m) => logs.push(m), ahora: () => new Date('2026-11-17T12:00:00Z'),
   };
@@ -112,5 +113,55 @@ describe('modulosDesplegables', () => {
   it('excluye los módulos del monorepo y los retirados', () => {
     const r = modulosDesplegables([modulo(), modulo({ id: 'ref', repo: 'plataforma' }), modulo({ id: 'viejo', repo: 'modulo-viejo', estado: 'retirado' })]);
     expect(r.map((m) => m.id)).toEqual(['notas']);
+  });
+});
+
+describe('módulos con base (I4-4)', () => {
+  const conBase = () => modulo({ datos: { clasificacion: 'interna', datos_personales: false, base: 'postgres' } });
+
+  it('prepara la base, migra con la imagen nueva antes del corte y le pasa la conexión al contenedor', async () => {
+    const base = new BaseFalsa();
+    const { ctx, docker, gh } = contexto([{ id: 7 }], { base, docker: conVersionAnterior() });
+    expect((await procesarModulo(conBase(), ctx)).estado).toBe('desplegado');
+    expect(base.aseguradas).toEqual(['notas']);
+    expect(docker.migraciones).toHaveLength(1);
+    expect(docker.migraciones[0]).toMatchObject({ imagen: `ghcr.io/${ORG}/modulo-notas@${DIGEST_A}`, env: { DB_SCHEMA: 'notas_staging', ENTORNO: 'staging' } });
+    expect(docker.migraciones[0]?.nombre).toMatch(/^plat-staging-notas-aaaaaaaaaaaa-migrar-\d+$/);
+    expect(docker.ejecutados[0]?.env).toMatchObject({ DATABASE_URL: expect.stringContaining('mod_notas'), DB_SCHEMA: 'notas_staging' });
+    expect(gh.estados(7).map((e) => e.description).join(' | ')).not.toContain('secreta');
+  });
+
+  it('si las migraciones fallan no levanta la versión nueva y la anterior sigue; la URL no llega al log', async () => {
+    const docker = conVersionAnterior();
+    docker.resultadoMigracion = { ok: false, salida: 'error: relation "x" already exists (postgresql://mod_notas.ref:secreta@pooler.test:5432/postgres)' };
+    const { ctx, gh, logs } = contexto([{ id: 8 }], { base: new BaseFalsa(), docker });
+    expect((await procesarModulo(conBase(), ctx)).estado).toBe('fallido');
+    expect(docker.ejecutados).toEqual([]);
+    expect(docker.contenedores.map((c) => c.nombre)).toEqual(['plat-staging-notas-bbbbbbbbbbbb']);
+    expect(gh.estados(8).at(-1)).toMatchObject({ state: 'failure', description: 'Las migraciones fallaron; sigue activa la versión anterior' });
+    expect(logs.join('\n')).toContain('already exists (postgresql://<oculta>)');
+    expect(logs.join('\n')).not.toContain('secreta');
+  });
+
+  it('sin base configurada en el deployer, el pedido termina en error sin tocar lo que corre', async () => {
+    const { ctx, docker, gh } = contexto([{ id: 9 }], { docker: conVersionAnterior() });
+    expect((await procesarModulo(conBase(), ctx)).estado).toBe('error');
+    expect(docker.contenedores).toHaveLength(1);
+    expect(gh.estados(9).at(-1)?.description).toContain('no tiene DB_ADMIN_URL');
+  });
+
+  it('error al preparar la base: estado error y sin credenciales en GitHub', async () => {
+    const { ctx, gh } = contexto([{ id: 10 }], { base: new BaseFalsa('timeout con postgresql://postgres.ref:admin@pooler.test:5432/postgres') });
+    expect((await procesarModulo(conBase(), ctx)).estado).toBe('error');
+    expect(gh.estados(10).at(-1)?.description).toBe('Error al desplegar: timeout con postgresql://<oculta>');
+  });
+
+  it('un módulo sin base no toca la base ni migra', async () => {
+    const base = new BaseFalsa();
+    const { ctx, docker } = contexto([{ id: 11 }], { base });
+    await procesarModulo(modulo(), ctx);
+    expect(base.aseguradas).toEqual([]);
+    expect(docker.migraciones).toEqual([]);
+    expect(docker.ejecutados[0]?.env).not.toHaveProperty('DATABASE_URL');
   });
 });

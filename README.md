@@ -164,6 +164,13 @@ Solo acepta pedidos del workflow, de la imagen del propio módulo, por digest y 
 2. `pnpm --filter @plataforma/deployer build && pnpm --filter @plataforma/deployer start`
 3. Cada módulo publicado queda en `http://127.0.0.1:<puerto>`; el mapa está en `infra/local/estado/`.
 
+### Base de datos de los módulos (I4-4)
+
+Un módulo con `datos.base: postgres` en el registry recibe un esquema y un rol propios por entorno en el
+Postgres de la plataforma (Supabase en el MVP). El deployer los crea, corre las migraciones de la imagen
+nueva antes del corte y le pasa `DATABASE_URL` y `DB_SCHEMA` al contenedor (ADR 0015). Configurar
+`DB_ADMIN_URL` y `DB_CLAVE_MAESTRA` en `infra/local/deployer*.env`.
+
 ### Producción (I4-3)
 
 El módulo dispara **Actions → promover** con el digest que está en staging. GitHub pide las aprobaciones

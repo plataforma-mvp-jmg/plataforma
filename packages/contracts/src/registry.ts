@@ -28,6 +28,8 @@ export const esquemaModulo = z
       .object({
         clasificacion: z.enum(['publica', 'interna', 'confidencial', 'restringida']),
         datos_personales: z.boolean(),
+        // I4-4: el módulo usa una base propia. El deployer le crea un esquema y un rol por entorno.
+        base: z.enum(['postgres']).optional(),
       })
       .strict(),
     agente: z.object({ habilitado: z.boolean() }).strict(),

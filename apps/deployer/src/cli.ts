@@ -8,6 +8,7 @@ import { crearVerificadorAtestacion } from './atestacion.js';
 import { modulosDesplegables, procesarModulo } from './ciclo.js';
 import { crearDocker } from './docker.js';
 import { crearMapa } from './mapa.js';
+import { crearProveedorBase } from './postgres.js';
 import { crearSalud } from './salud.js';
 
 const c = z
@@ -22,7 +23,11 @@ const c = z
     INTERVALO_SEG: z.coerce.number().int().min(10).default(20),
     MODULO_PLATFORM_JWKS_URL: z.url(),
     MODULO_PLATFORM_ISSUER: z.string().min(1),
+    // I4-4: conexión administrativa (Session pooler de Supabase) y clave para derivar las contraseñas de los roles.
+    DB_ADMIN_URL: z.string().regex(/^postgres(ql)?:\/\//, 'debe ser una URL postgresql://').optional(),
+    DB_CLAVE_MAESTRA: z.string().regex(/^[0-9a-f]{32,}$/i, 'mínimo 32 caracteres hexadecimales').optional(),
   })
+  .refine((v) => !v.DB_ADMIN_URL === !v.DB_CLAVE_MAESTRA, 'DB_ADMIN_URL y DB_CLAVE_MAESTRA van juntas')
   .parse(process.env);
 
 const [desde, hasta] = c.PUERTOS.split('-').map(Number) as [number, number];
@@ -43,12 +48,13 @@ const ctx = {
   mapa: crearMapa(c.MAPA_PATH),
   rangoPuertos: [desde, hasta] as [number, number],
   envModulo: { PLATFORM_JWKS_URL: c.MODULO_PLATFORM_JWKS_URL, PLATFORM_ISSUER: c.MODULO_PLATFORM_ISSUER },
+  ...(c.DB_ADMIN_URL && c.DB_CLAVE_MAESTRA ? { base: crearProveedorBase({ urlAdmin: c.DB_ADMIN_URL, claveMaestra: c.DB_CLAVE_MAESTRA, entorno: c.ENTORNO }) } : {}),
   log,
 };
 
 let activo = true;
 for (const senal of ['SIGINT', 'SIGTERM'] as const) process.on(senal, () => (activo = false));
-log(`deployer iniciado: ${c.ORG}, puertos ${c.PUERTOS}, cada ${c.INTERVALO_SEG} s`);
+log(`deployer iniciado: ${c.ORG}, puertos ${c.PUERTOS}, cada ${c.INTERVALO_SEG} s, base ${c.DB_ADMIN_URL ? new URL(c.DB_ADMIN_URL).hostname : 'sin configurar'}`);
 while (activo) {
   for (const m of modulosDesplegables(cargarRegistry(c.REGISTRY_DIR))) {
     try {

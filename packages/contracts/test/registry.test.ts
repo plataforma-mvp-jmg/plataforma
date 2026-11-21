@@ -42,6 +42,11 @@ describe('cargarRegistry', () => {
     expect(cargarRegistry(dir)[0]?.repo).toBe('plataforma');
   });
 
+  it('I4-4: acepta datos.base postgres', () => {
+    writeFileSync(join(dir, 'mod-a.yaml'), base.replace('datos_personales: false }', 'datos_personales: false, base: postgres }'));
+    expect(cargarRegistry(dir)[0]?.datos.base).toBe('postgres');
+  });
+
   it('carga un módulo válido', () => {
     writeFileSync(join(dir, 'mod-a.yaml'), base);
     expect(cargarRegistry(dir)[0]).toMatchObject({ id: 'mod-a', riesgo: 'bajo' });
@@ -52,6 +57,7 @@ describe('cargarRegistry', () => {
     ['email en un campo', 'mod-a.yaml', base.replace('po-a', 'po@empresa.test')],
     ['URL en un campo', 'mod-a.yaml', base.replace('repo: modulo-mod-a', 'repo: https://github.com/x/y')],
     ['clave desconocida', 'mod-a.yaml', `${base}extra: 1\n`],
+    ['motor de base no homologado', 'mod-a.yaml', base.replace('datos_personales: false }', 'datos_personales: false, base: mysql }')],
     ['datos personales con riesgo bajo', 'mod-a.yaml', base.replace('datos_personales: false', 'datos_personales: true')],
     ['repo con otro nombre', 'mod-a.yaml', base.replace('repo: modulo-mod-a', 'repo: modulo-otro')],
     ['plantilla con otro formato', 'mod-a.yaml', base.replace('plantilla-modulo@0.1.0', 'otra@1')],
