@@ -1,6 +1,6 @@
 import type { ModuloRegistry } from '@plataforma/contracts';
 import type { ClienteGitHub, Metodo } from '@plataforma/github';
-import type { Contenedor, Docker, EntradaMapa, Mapa, OpcionesRun, Salud, VerificadorAtestacion } from '../src/tipos.js';
+import type { BaseModulo, Contenedor, Docker, EntradaMapa, Mapa, OpcionesRun, ProveedorBase, ResultadoMigracion, Salud, VerificadorAtestacion } from '../src/tipos.js';
 
 export const ORG = 'org-test';
 export const DIGEST_A = `sha256:${'a'.repeat(64)}`;
@@ -111,6 +111,22 @@ export class DockerFalso implements Docker {
   }
   async logs() {
     return 'Error: no arranca';
+  }
+  migraciones: { nombre: string; imagen: string; env: Record<string, string> }[] = [];
+  resultadoMigracion: ResultadoMigracion = { ok: true, salida: 'aplicadas: 0001_inicial.sql' };
+  async migrar(o: { nombre: string; imagen: string; env: Record<string, string> }) {
+    this.migraciones.push(o);
+    return this.resultadoMigracion;
+  }
+}
+
+export class BaseFalsa implements ProveedorBase {
+  aseguradas: string[] = [];
+  constructor(private readonly error: string | null = null) {}
+  async asegurar(id: string): Promise<BaseModulo> {
+    if (this.error) throw new Error(this.error);
+    this.aseguradas.push(id);
+    return { esquema: `${id.replace(/-/g, '_')}_staging`, url: `postgresql://mod_${id}.ref:secreta@pooler.test:5432/postgres` };
   }
 }
 

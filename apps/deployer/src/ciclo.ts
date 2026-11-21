@@ -1,10 +1,11 @@
 // Un ciclo del deployer para un módulo y un entorno: toma el pedido pendiente más nuevo, lo valida,
-// en producción verifica las aprobaciones (I4-3), verifica la atestación, levanta la versión nueva y recién retira la anterior si la nueva está sana.
+// en producción verifica las aprobaciones (I4-3), verifica la atestación, prepara la base y migra (I4-4), levanta la versión nueva y recién retira la anterior si la nueva está sana.
 // Cualquier rechazo o falla deja la versión anterior funcionando.
 import type { ModuloRegistry } from '@plataforma/contracts';
 import type { ClienteGitHub } from '@plataforma/github';
+import { sinCredenciales } from './base.js';
 import { verificarPromocion, type Promocion } from './promocion.js';
-import type { Docker, Entorno, Mapa, Pedido, Salud, VerificadorAtestacion } from './tipos.js';
+import type { Docker, Entorno, Mapa, Pedido, ProveedorBase, Salud, VerificadorAtestacion } from './tipos.js';
 import { descripcion, nombreContenedor, puertoLibre, TAREA, validarPedido } from './verificacion.js';
 
 export interface Contexto {
@@ -18,6 +19,8 @@ export interface Contexto {
   rangoPuertos: [number, number];
   /** Variables para el contenedor (JWKS e issuer de la plataforma). Nunca secretos de la plataforma. */
   envModulo: Record<string, string>;
+  /** Base de los módulos con `datos.base` (I4-4). Sin configurar, esos módulos no se despliegan. */
+  base?: ProveedorBase;
   log: (mensaje: string) => void;
   ahora?: () => Date;
 }
@@ -97,8 +100,26 @@ export async function procesarModulo(m: ModuloRegistry, ctx: Contexto): Promise<
   const ref = `${destino.imagen}@${destino.digest}`;
   const nombre = nombreContenedor(ctx.entorno, m.id, destino.digest);
   let creado = false;
+  const envEntorno = { ...ctx.envModulo, ENTORNO: ENTORNO_MODULO[ctx.entorno] };
   try {
     await ctx.docker.descargar(ref);
+
+    // 2a. Base del módulo (I4-4): esquema y rol propios, y migraciones con la imagen NUEVA antes del corte.
+    //     Si fallan, la versión anterior sigue atendiendo. Las migraciones tienen que ser compatibles hacia atrás.
+    let envBase: Record<string, string> = {};
+    if (m.datos.base === 'postgres') {
+      if (!ctx.base) throw new Error('el módulo usa base y el deployer no tiene DB_ADMIN_URL ni DB_CLAVE_MAESTRA');
+      const b = await ctx.base.asegurar(m.id);
+      envBase = { DATABASE_URL: b.url, DB_SCHEMA: b.esquema };
+      await informar(ctx, repo, pedido.id, 'in_progress', `Aplicando migraciones en ${b.esquema}`);
+      const r = await ctx.docker.migrar({ nombre: `${nombre}-migrar-${(ctx.ahora?.() ?? new Date()).getTime()}`, imagen: ref, env: { ...envEntorno, ...envBase } });
+      if (!r.ok) {
+        ctx.log(`${m.id} #${pedido.id}: migraciones fallidas\n${sinCredenciales(r.salida)}`);
+        await informar(ctx, repo, pedido.id, 'failure', 'Las migraciones fallaron; sigue activa la versión anterior');
+        return { modulo: m.id, estado: 'fallido', pedido: pedido.id, detalle: 'migraciones' };
+      }
+    }
+
     const existentes = await ctx.docker.listar(ctx.entorno);
     if (existentes.some((c) => c.nombre === nombre)) await ctx.docker.eliminar(nombre);
     const puerto = puertoLibre(ctx.rangoPuertos, existentes.filter((c) => c.nombre !== nombre).map((c) => c.puerto));
@@ -113,7 +134,7 @@ export async function procesarModulo(m: ModuloRegistry, ctx: Contexto): Promise<
         'plataforma.puerto': String(puerto),
         'plataforma.pedido': String(pedido.id),
       },
-      env: { ...ctx.envModulo, ENTORNO: ENTORNO_MODULO[ctx.entorno] },
+      env: { ...envEntorno, ...envBase },
     });
     creado = true;
 
@@ -139,7 +160,7 @@ export async function procesarModulo(m: ModuloRegistry, ctx: Contexto): Promise<
     ctx.log(`${m.id} #${pedido.id}: desplegado ${destino.digest} en ${puerto}${evidencia}`);
     return { modulo: m.id, estado: 'desplegado', pedido: pedido.id };
   } catch (err) {
-    const motivo = (err as Error).message;
+    const motivo = sinCredenciales((err as Error).message);
     if (creado) await ctx.docker.eliminar(nombre).catch(() => undefined);
     await informar(ctx, repo, pedido.id, 'error', `Error al desplegar: ${motivo}`).catch(() => undefined);
     ctx.log(`${m.id} #${pedido.id}: error (${motivo})`);
