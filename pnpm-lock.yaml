@@ -194,8 +194,8 @@ importers:
         specifier: 11.1.5
         version: 11.1.5
       '@fastify/reply-from':
-        specifier: 12.8.1
-        version: 12.8.1
+        specifier: 12.8.3
+        version: 12.8.3
       '@fastify/static':
         specifier: 10.1.11
         version: 10.1.11
@@ -734,8 +734,8 @@ packages:
   '@fastify/proxy-addr@5.1.2':
     resolution: {integrity: sha512-uqB4QsgVoro0XDC+DIftIMGXHdBPn+lK6Ek3xXAIxPMCJfqxnbtyEoMCm2KPUVOuIosd7Cyw9HawEqMFM/UA+g==}
 
-  '@fastify/reply-from@12.8.1':
-    resolution: {integrity: sha512-tiWScAbzVww3SeTB1bvBQ95xfUp9dTWEFtT9IHZRi4uhpbLu61vLZTJCO3trkTZ2T4FbFMI1iH7tTUMP8NoI/A==}
+  '@fastify/reply-from@12.8.3':
+    resolution: {integrity: sha512-txrCVpuVlIcGxItszmmlyg8IQVSrSr1GKpwY0Ag1El/Y3wuB8XGP+yEJSDorCxfIvJtM+9QBFCQF8rGabktkpg==}
 
   '@fastify/send@4.2.1':
     resolution: {integrity: sha512-zOB8L9z444PnGbd1Nd7gNXPz/7bnDR8Z4KNTNSwLVQuE3cTGsU9qUj1N4SjXKK0Tq4cauZYTwB+tqvlqosuKsw==}
@@ -2167,7 +2167,7 @@ snapshots:
       '@fastify/forwarded': 3.1.2
       ipaddr.js: 2.5.0
 
-  '@fastify/reply-from@12.8.1':
+  '@fastify/reply-from@12.8.3':
     dependencies:
       '@fastify/error': 4.2.1
       end-of-stream: 1.4.5

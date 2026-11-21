@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",
-    "@fastify/reply-from": "12.8.1",
+    "@fastify/reply-from": "12.8.3",
     "@fastify/static": "10.1.11",
     "@plataforma/auth": "workspace:*",
     "@plataforma/contracts": "workspace:*",
