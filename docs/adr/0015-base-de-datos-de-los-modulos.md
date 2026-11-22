@@ -37,6 +37,14 @@ gratuito: un proyecto `plataforma-mvp` (us-east-1). Hechos verificados en la doc
 - Probado contra Postgres 16 con un administrador **no superusuario** (como en Supabase): aislamiento entre
   módulos y entre entornos, sin acceso a `public`, sin poder crear roles ni esquemas ni borrar el propio.
 
+### Corrección (22/11/2026)
+
+El segundo despliegue de `tareas-piloto` falló con `password authentication failed` en la migración: el
+deployer reasignaba la contraseña del rol en cada despliegue. Aunque el valor era el mismo, Postgres genera un
+verificador SCRAM nuevo y Supavisor siguió un rato con el anterior en caché. Desde entonces la contraseña se fija
+**solo al crear el rol**. Si alguna vez hay que rotarla (por ejemplo, si cambia `DB_CLAVE_MAESTRA`), es un
+procedimiento manual con reintentos acotados.
+
 ## Consecuencias
 
 - **Riesgo aceptado para el MVP:** staging y producción comparten instancia (separación lógica por esquema
