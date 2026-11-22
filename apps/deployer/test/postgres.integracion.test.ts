@@ -24,6 +24,8 @@ describe.skipIf(URL_PRUEBA === '')('aprovisionamiento real en Postgres', { timeo
     const produccion = crearProveedorBase({ urlAdmin: URL_PRUEBA, claveMaestra: MAESTRA, entorno: 'production' });
     const a = await staging.asegurar('prueba-aaa');
     expect(await staging.asegurar('prueba-aaa')).toEqual(a); // idempotente, misma contraseña
+    // Volver a asegurar no reasigna la contraseña: el rol sigue entrando.
+    await como(a.url, (c) => c.query('SELECT 1'));
     const b = await staging.asegurar('prueba-bbb');
     const aProd = await produccion.asegurar('prueba-aaa');
 

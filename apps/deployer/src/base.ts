@@ -35,11 +35,14 @@ export function sentenciasAprovisionar(n: NombresBase, contrasena: string): stri
   const rol = `"${n.rol}"`;
   const esquema = `"${n.esquema}"`;
   return [
-    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${n.rol}') THEN CREATE ROLE ${rol} LOGIN; END IF; END $$`,
+    // La contraseña se fija SOLO al crear el rol. Volver a asignarla (aunque sea la misma) genera un verificador
+    // SCRAM nuevo, y el pooler de Supabase (Supavisor) sigue un rato con el anterior en caché: las conexiones
+    // del módulo fallan con "password authentication failed" (pasó en I4-4, ADR 0015).
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${n.rol}') THEN CREATE ROLE ${rol} LOGIN PASSWORD '${contrasena}'; END IF; END $$`,
     // Sin privilegios especiales; VALID UNTIL infinity evita el error de Supavisor con roles vencidos.
     // SUPERUSER, REPLICATION y BYPASSRLS no se tocan: el usuario administrativo de Supabase no es superusuario,
     // no puede otorgarlos y un rol nuevo nace sin ellos.
-    `ALTER ROLE ${rol} WITH LOGIN NOCREATEDB NOCREATEROLE NOINHERIT CONNECTION LIMIT 10 PASSWORD '${contrasena}' VALID UNTIL 'infinity'`,
+    `ALTER ROLE ${rol} WITH LOGIN NOCREATEDB NOCREATEROLE NOINHERIT CONNECTION LIMIT 10 VALID UNTIL 'infinity'`,
     // El esquema queda a nombre del administrador; el rol del módulo lo usa y crea sus tablas, pero no puede
     // borrarlo ni dar permisos sobre él.
     `CREATE SCHEMA IF NOT EXISTS ${esquema}`,

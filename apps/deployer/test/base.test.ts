@@ -21,7 +21,10 @@ describe('base de los módulos (I4-4)', () => {
 
   it('sentencias: rol sin privilegios, esquema propio, sin public en el search_path', () => {
     const sql = sentenciasAprovisionar(nombresBase('tareas-piloto', 'staging'), 'ab12').join('\n');
-    expect(sql).toContain('CREATE ROLE "mod_tareas_piloto_staging" LOGIN');
+    expect(sql).toContain(`CREATE ROLE "mod_tareas_piloto_staging" LOGIN PASSWORD 'ab12'`);
+    // La contraseña solo al crear: reasignarla rompe las conexiones por Supavisor.
+    expect(sql.match(/PASSWORD/g)).toHaveLength(1);
+    expect(sql).not.toMatch(/ALTER ROLE[^\n]*PASSWORD/);
     expect(sql).toContain('LOGIN NOCREATEDB NOCREATEROLE NOINHERIT CONNECTION LIMIT 10');
     expect(sql).toContain("VALID UNTIL 'infinity'");
     expect(sql).toContain('GRANT USAGE, CREATE ON SCHEMA "tareas_piloto_staging" TO "mod_tareas_piloto_staging"');
