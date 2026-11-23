@@ -78,6 +78,17 @@ describe('promoción a producción (I4-3)', () => {
     expect((await procesarModulo(m, ctx)).estado).toBe('desplegado');
   });
 
+  it('rollback (I4-5): un digest viejo probado en staging se encuentra aunque haya más de 100 despliegues después', async () => {
+    const nuevos: DeploymentFalso[] = Array.from({ length: 150 }, (_, i) => ({
+      id: 1000 + i, environment: 'staging', estados: ['success'], payload: { imagen: IMAGEN, digest: DIGEST_B },
+    }));
+    // DIGEST_A solo está en el despliegue #1, el más viejo (queda en la segunda página).
+    const { ctx, gh, m } = escenario({ extra: nuevos });
+    gh.deployments.sort((a, b) => (a.id === 10 ? -1 : b.id === 10 ? 1 : b.id - a.id));
+    expect((await procesarModulo(m, ctx)).estado).toBe('desplegado');
+    expect(gh.llamadas.some((l) => l.ruta.includes('environment=staging') && l.ruta.includes('page=2'))).toBe(true);
+  });
+
   it('staging fallido con ese digest no cuenta como probado', async () => {
     const { ctx, gh, m } = escenario();
     gh.deployments[0] = { id: 1, environment: 'staging', estados: ['failure', 'in_progress'], payload: { imagen: IMAGEN, digest: DIGEST_A } };

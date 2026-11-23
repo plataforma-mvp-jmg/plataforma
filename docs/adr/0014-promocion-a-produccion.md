@@ -52,3 +52,14 @@ quedar evidencia de quién aprobó qué. Hechos verificados en I4-1 e I4-2a:
 - La revisión simulada (cuenta `jmgarciarivoiro1-ops`) no es evidencia SOX: demuestra el mecanismo.
 - Los pedidos de staging de módulos en la plantilla 0.5.0 (sin `task`) dejan de procesarse hasta pasar a
   la 0.6.0.
+
+## Rollback (I4-5, 23/11/2026)
+
+- Un rollback es una promoción a un digest anterior por el mismo workflow, con las mismas aprobaciones y la
+  misma verificación. No se agrega un camino de emergencia que saltee la aprobación.
+- El deployer y el workflow buscan el despliegue exitoso en staging **en todo el historial** (paginado, hasta
+  1000 despliegues), no solo en los últimos 30: el digest anterior es justamente uno viejo.
+- El resumen del run de promover muestra los últimos despliegues exitosos de producción y marca el pedido como
+  *Rollback* si el digest ya estuvo en producción.
+- Con base de datos, el rollback no deshace migraciones; la regla de migraciones compatibles con la versión
+  anterior es lo que lo hace seguro. Procedimiento en `docs/runbook-produccion.md`.

@@ -65,7 +65,11 @@ export class GitHubFalso implements ClienteGitHub {
     }
     if ((m = /\/deployments\?environment=([a-z-]+)&task=deploy:plataforma/.exec(ruta))) {
       const env = m[1];
-      return r(this.deployments.filter((d) => (d.environment ?? 'staging') === env).map((d) => ({ id: d.id, sha: 'abc', environment: d.environment ?? 'staging', creator: { login: d.creador ?? 'github-actions[bot]' }, payload: d.payload ?? { imagen: `ghcr.io/${ORG}/modulo-notas`, digest: DIGEST_A }, created_at: d.created_at ?? `2026-11-17T10:00:0${d.id}Z` })));
+      // Paginación como la API: per_page y page (por defecto, todo en una página).
+      const porPagina = Number(/per_page=(\d+)/.exec(ruta)?.[1] ?? 1000);
+      const pagina = Number(/[?&]page=(\d+)/.exec(ruta)?.[1] ?? 1);
+      const delEntorno = this.deployments.filter((d) => (d.environment ?? 'staging') === env);
+      return r(delEntorno.slice((pagina - 1) * porPagina, pagina * porPagina).map((d) => ({ id: d.id, sha: 'abc', environment: d.environment ?? 'staging', creator: { login: d.creador ?? 'github-actions[bot]' }, payload: d.payload ?? { imagen: `ghcr.io/${ORG}/modulo-notas`, digest: DIGEST_A }, created_at: d.created_at ?? `2026-11-17T10:00:0${d.id}Z` })));
     }
     if ((m = /\/deployments\/(\d+)\/statuses/.exec(ruta))) {
       const d = this.deployments.find((x) => x.id === Number(m?.[1]));
