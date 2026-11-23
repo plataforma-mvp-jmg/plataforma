@@ -41,6 +41,24 @@ interface DeploymentApi {
   payload: unknown;
 }
 
+/**
+ * Todos los pedidos de la plataforma de un entorno, recorriendo las páginas (I4-5). Un rollback vuelve a
+ * versiones viejas: si solo se miraran los últimos 30, el digest anterior podría quedar afuera justo cuando
+ * más se necesita. Tope de 10 páginas de 100.
+ */
+async function deploymentsDe(gh: ClienteGitHub, base: string, entorno: string): Promise<DeploymentApi[]> {
+  const todos: DeploymentApi[] = [];
+  for (let pagina = 1; pagina <= 10; pagina++) {
+    const lote = await gh.pedir<DeploymentApi[]>('GET', `${base}/deployments?environment=${entorno}&task=${TAREA}&per_page=100&page=${pagina}`);
+    todos.push(...lote);
+    if (lote.length < 100) break;
+  }
+  return todos;
+}
+
+const tuvoExito = async (gh: ClienteGitHub, base: string, id: number) =>
+  (await gh.pedir<{ state: string }[]>('GET', `${base}/deployments/${id}/statuses?per_page=100`)).some((e) => e.state === 'success');
+
 /** Environments que tienen que estar aprobados según el riesgo (docs/07, ADR 0008). */
 export function environmentsRequeridos(riesgo: ModuloRegistry['riesgo']): string[] {
   return riesgo === 'bajo' ? ['production'] : ['aceptacion-negocio', 'production'];
@@ -83,18 +101,17 @@ export async function verificarPromocion(
   if (!dentro) throw new Error(`el pedido no lo creó el job de producción del run ${o.run}`);
 
   // 4. Cada run promueve una sola vez: si ya hubo un despliegue exitoso con ese run, se rechaza.
-  const produccion = await o.gh.pedir<DeploymentApi[]>('GET', `${base}/deployments?environment=production&task=${TAREA}&per_page=30`);
+  const produccion = await deploymentsDe(o.gh, base, 'production');
   for (const d of produccion.filter((x) => x.id !== o.pedido && leerPayload(x.payload).run_id === o.run)) {
-    const estados = await o.gh.pedir<{ state: string }[]>('GET', `${base}/deployments/${d.id}/statuses?per_page=20`);
-    if (estados.some((e) => e.state === 'success')) throw new Error(`el run ${o.run} ya se usó en el pedido #${d.id}`);
+    if (await tuvoExito(o.gh, base, d.id)) throw new Error(`el run ${o.run} ya se usó en el pedido #${d.id}`);
   }
 
-  // 5. El mismo digest tuvo un despliegue exitoso en staging.
-  const staging = await o.gh.pedir<DeploymentApi[]>('GET', `${base}/deployments?environment=staging&task=${TAREA}&per_page=30`);
+  // 5. El mismo digest tuvo un despliegue exitoso en staging, en cualquier momento del historial: así un
+  //    rollback a una versión anterior (I4-5) pasa por el mismo circuito que una versión nueva.
+  const staging = await deploymentsDe(o.gh, base, 'staging');
   let probado = false;
   for (const d of staging.filter((x) => leerPayload(x.payload).digest === o.digest)) {
-    const estados = await o.gh.pedir<{ state: string }[]>('GET', `${base}/deployments/${d.id}/statuses?per_page=20`);
-    if (estados.some((e) => e.state === 'success')) {
+    if (await tuvoExito(o.gh, base, d.id)) {
       probado = true;
       break;
     }

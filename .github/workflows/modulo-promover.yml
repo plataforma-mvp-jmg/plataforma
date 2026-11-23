@@ -62,14 +62,49 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest inválido: $DIGEST"; exit 1; }
-          ids=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=staging&task=deploy:plataforma&per_page=30" \
+          # Todo el historial (--paginate): un rollback vuelve a digests viejos (I4-5).
+          ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/deployments?environment=staging&task=deploy:plataforma&per_page=100" \
             --jq ".[] | select(.payload.digest == \"$DIGEST\") | .id")
           ok=no
           for id in $ids; do
-            if gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=20" --jq '.[].state' | grep -qx success; then ok=yes; break; fi
+            if gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=100" --jq '.[].state' | grep -qx success; then ok=yes; break; fi
           done
           [ "$ok" = yes ] || { echo "::error::$DIGEST no tiene un despliegue exitoso en staging"; exit 1; }
           echo "imagen=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      # Para quien aprueba: qué está hoy en producción y qué se pide. Si el digest pedido ya estuvo en producción
+      # antes, es un rollback.
+      - name: Historial de producción
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Promoción pedida"
+            echo ""
+            echo "- Digest: \`$DIGEST\`"
+            echo ""
+            echo "### Últimos despliegues exitosos en producción"
+            echo ""
+            echo "| Pedido | Digest | Fecha |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rollback=no
+          n=0
+          for fila in $(gh api --paginate "repos/$GITHUB_REPOSITORY/deployments?environment=production&task=deploy:plataforma&per_page=100" \
+              --jq '.[] | "\(.id)|\(.payload.digest)|\(.created_at)"'); do
+            IFS='|' read -r id dig fecha <<< "$fila"
+            gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=100" --jq '.[].state' | grep -qx success || continue
+            if [ "$dig" = "$DIGEST" ]; then rollback=yes; fi
+            n=$((n + 1))
+            if [ "$n" -le 5 ]; then echo "| #$id | \`${dig:7:12}\` | $fecha |" >> "$GITHUB_STEP_SUMMARY"; fi
+          done
+          if [ "$rollback" = yes ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**Rollback:** este digest ya estuvo en producción. Las migraciones aplicadas después no se deshacen (runbook de producción)." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Rollback a un digest que ya estuvo en producción"
+          fi
 
   negocio:
     name: aceptación de negocio (PO)
