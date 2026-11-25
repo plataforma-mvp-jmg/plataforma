@@ -1,11 +1,20 @@
 version: 2
+# Un PR por ecosistema y por semana (groups): cada PR suelto pedía su propia revisión de Sistemas
+# y, al mergear uno, el resto quedaba con el lockfile en conflicto y la aprobación descartada.
+# Las actualizaciones de seguridad siguen llegando en PRs propios, sin esperar al agrupado.
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
     labels: [dependencias]
+    groups:
+      acciones:
+        patterns: ['*']
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
     labels: [dependencias]
     open-pull-requests-limit: 5
+    groups:
+      npm:
+        patterns: ['*']
