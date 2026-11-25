@@ -44,4 +44,14 @@ describe('reglas de la configuración deseada', () => {
       expect(prod).toEqual({ nombre: 'production', revisores: [{ tipo: 'Team', slug: 'sistemas' }], prevenirAutoAprobacion: true });
     }
   });
+
+  it('riesgo medio o alto: aceptación del PO, que tampoco puede aprobar su propio pedido', () => {
+    const m = modulo({ riesgo: 'medio', duenos: { product_owner: 'po-notas', responsable_tecnico: 'rt-notas' } });
+    expect(ambientesDeseados(m, 'sistemas').find((a) => a.nombre === 'aceptacion-negocio')).toEqual({
+      nombre: 'aceptacion-negocio',
+      revisores: [{ tipo: 'User', login: 'po-notas' }],
+      prevenirAutoAprobacion: true,
+    });
+    expect(ambientesDeseados(modulo({ riesgo: 'bajo' }), 'sistemas').map((a) => a.nombre)).toEqual(['staging', 'production']);
+  });
 });

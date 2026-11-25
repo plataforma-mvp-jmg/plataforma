@@ -85,7 +85,9 @@ export interface AmbienteDeseado {
 export function ambientesDeseados(m: ModuloRegistry, teamRevisores: string): AmbienteDeseado[] {
   const ambientes: AmbienteDeseado[] = [{ nombre: 'staging', revisores: [], prevenirAutoAprobacion: false }];
   if (m.riesgo !== 'bajo') {
-    ambientes.push({ nombre: 'aceptacion-negocio', revisores: [{ tipo: 'User', login: m.duenos.product_owner }], prevenirAutoAprobacion: false });
+    // Sin autoaprobación también acá: si el PO dispara la promoción, no puede aceptarla él mismo (el deployer de
+    // producción lo rechaza igual; así GitHub lo corta antes y no se gasta la aprobación de Sistemas).
+    ambientes.push({ nombre: 'aceptacion-negocio', revisores: [{ tipo: 'User', login: m.duenos.product_owner }], prevenirAutoAprobacion: true });
   }
   ambientes.push({ nombre: 'production', revisores: [{ tipo: 'Team', slug: teamRevisores }], prevenirAutoAprobacion: true });
   return ambientes;
@@ -105,3 +107,6 @@ export function tagDePlantilla(plantilla: string, repoPlantilla: string): string
 
 /** Etiqueta de las revisiones simuladas del MVP (ADR-064): la usan los PR de los módulos. */
 export const ETIQUETA_REVISION = { name: 'revision-simulada', color: 'FBCA04', description: 'Revision hecha por la cuenta simulada del MVP' };
+/** Etiqueta que dependabot.yml de la plantilla pone a sus PR: sin ella, Dependabot comenta un error en cada PR. */
+export const ETIQUETA_DEPENDENCIAS = { name: 'dependencias', color: '0366D6', description: 'Actualizaciones de Dependabot' };
+export const ETIQUETAS = [ETIQUETA_REVISION, ETIQUETA_DEPENDENCIAS];

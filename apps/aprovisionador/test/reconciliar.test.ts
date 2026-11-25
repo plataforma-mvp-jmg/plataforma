@@ -84,7 +84,7 @@ describe('reconciliarModulo', () => {
     await reconciliarModulo(modulo({ riesgo: 'medio' }), ctx);
     const ambientes = gh.llamadas.filter((l) => l.metodo === 'PUT' && /\/environments\/[^/]+$/.test(l.ruta));
     expect(ambientes.map((a) => a.ruta.split('/').pop())).toEqual(['staging', 'aceptacion-negocio', 'production']);
-    expect(ambientes[1]?.cuerpo).toMatchObject({ reviewers: [{ type: 'User', id: 55 }], prevent_self_review: false });
+    expect(ambientes[1]?.cuerpo).toMatchObject({ reviewers: [{ type: 'User', id: 55 }], prevent_self_review: true });
     expect(gh.rutas()).toContain('GET /users/po-user');
   });
 
@@ -135,14 +135,17 @@ describe('reconciliarModulo', () => {
   });
 });
 
-describe('etiqueta revision-simulada', () => {
-  it('la crea una sola vez', async () => {
+describe('etiquetas revision-simulada y dependencias', () => {
+  it('las crea una sola vez', async () => {
     const gh = new GitHubFalso(ORG);
     const { ctx } = contexto(gh);
-    expect((await reconciliarModulo(modulo(), ctx)).acciones).toContain('etiqueta revision-simulada');
-    expect(gh.llamadas.find((l) => l.metodo === 'POST' && l.ruta.endsWith('/labels'))?.cuerpo).toMatchObject({ name: 'revision-simulada', color: 'FBCA04' });
+    expect((await reconciliarModulo(modulo(), ctx)).acciones).toEqual(expect.arrayContaining(['etiqueta revision-simulada', 'etiqueta dependencias']));
+    const creadas = gh.llamadas.filter((l) => l.metodo === 'POST' && l.ruta.endsWith('/labels')).map((l) => l.cuerpo);
+    expect(creadas).toMatchObject([{ name: 'revision-simulada', color: 'FBCA04' }, { name: 'dependencias' }]);
     gh.llamadas = [];
-    expect((await reconciliarModulo(modulo(), ctx)).acciones).not.toContain('etiqueta revision-simulada');
+    const segunda = (await reconciliarModulo(modulo(), ctx)).acciones;
+    expect(segunda).not.toContain('etiqueta revision-simulada');
+    expect(segunda).not.toContain('etiqueta dependencias');
     expect(gh.rutas('POST')).not.toContain(`POST /repos/${ORG}/modulo-notas/labels`);
   });
 

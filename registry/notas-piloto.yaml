@@ -4,11 +4,11 @@ objetivo: Probar el aprovisionamiento automatico de modulos (datos sinteticos).
 area: Sistemas
 empresas: [acopio]
 duenos:
-  product_owner: jmgarciarivoiro-tita
+  product_owner: jmgarciarivoiro-po
   responsable_tecnico: jmgarciarivoiro-tita
 repo: modulo-notas-piloto
-plantilla: plantilla-modulo@0.2.0
-estado: propuesto
+plantilla: plantilla-modulo@0.7.3
+estado: staging
 riesgo: medio
 criticidad: baja
 sox:

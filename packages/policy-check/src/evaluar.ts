@@ -30,6 +30,8 @@ export interface Entrada {
   catalogo: Catalogo;
   excepciones: Excepcion[];
   cuerpoPr: string | null;
+  /** Login del autor del PR según el evento de GitHub. */
+  autorPr?: string | null | undefined;
   hoy: string;
   /** Nombre del repo de la plantilla de módulos (por ejemplo, plantilla-modulo). */
   repoPlantilla?: string | undefined;
@@ -56,7 +58,7 @@ export function evaluar(e: Entrada): ResultadoEvaluacion {
   const modulo = esPlantilla ? undefined : e.registry.find((m) => m.id === id);
   // Sin registro (o en la plantilla) no hay riesgo declarado: se aplica el perfil más exigente.
   const perfil: Perfil = modulo ? PERFIL[modulo.riesgo] : 'A';
-  const ctx = { dir: e.dir, repo: e.repo, registry: e.registry, modulo, perfil, cuerpoPr: e.cuerpoPr, esPlantilla };
+  const ctx = { dir: e.dir, repo: e.repo, registry: e.registry, modulo, perfil, cuerpoPr: e.cuerpoPr, autorPr: e.autorPr ?? null, esPlantilla };
 
   const politicas = e.catalogo.politicas.map((p): ResultadoPolitica => {
     const base = { id: p.id, tipo: p.tipo, descripcion: p.descripcion };

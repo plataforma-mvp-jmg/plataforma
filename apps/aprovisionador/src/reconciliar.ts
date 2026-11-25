@@ -7,7 +7,7 @@ import {
   ambientesDeseados,
   aprobacionesRequeridas,
   debeAprovisionarse,
-  ETIQUETA_REVISION,
+  ETIQUETAS,
   NOMBRE_RULESET,
   RAMA_INICIAL,
   rulesetDeseado,
@@ -75,15 +75,17 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
     await gh.pedir('PUT', `/orgs/${org}/teams/${ctx.teamRevisores}/repos/${org}/${m.repo}`, { permission: 'push' });
     r.acciones.push(`team ${ctx.teamRevisores}: write`);
 
-    // 3b. Etiqueta de revisión simulada. No es un control: si falla, se informa y se sigue.
-    try {
-      if (!(await gh.buscar(`${repo}/labels/${ETIQUETA_REVISION.name}`))) {
-        await gh.pedir('POST', `${repo}/labels`, ETIQUETA_REVISION);
-        r.acciones.push(`etiqueta ${ETIQUETA_REVISION.name}`);
+    // 3b. Etiquetas (revisión simulada y Dependabot). No son un control: si fallan, se informa y se sigue.
+    for (const etiqueta of ETIQUETAS) {
+      try {
+        if (!(await gh.buscar(`${repo}/labels/${etiqueta.name}`))) {
+          await gh.pedir('POST', `${repo}/labels`, etiqueta);
+          r.acciones.push(`etiqueta ${etiqueta.name}`);
+        }
+      } catch (err) {
+        if (!(err instanceof ErrorGitHub)) throw err;
+        r.acciones.push(`etiqueta ${etiqueta.name}: no se pudo crear (${err.status})`);
       }
-    } catch (err) {
-      if (!(err instanceof ErrorGitHub)) throw err;
-      r.acciones.push(`etiqueta ${ETIQUETA_REVISION.name}: no se pudo crear (${err.status})`);
     }
 
     // 4. main existe (con CODEOWNERS) antes de protegerla: después ni la App puede pushear a main.
