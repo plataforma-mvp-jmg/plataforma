@@ -86,6 +86,17 @@ describe('reconciliarModulo', () => {
     expect(ambientes.map((a) => a.ruta.split('/').pop())).toEqual(['staging', 'aceptacion-negocio', 'production']);
     expect(ambientes[1]?.cuerpo).toMatchObject({ reviewers: [{ type: 'User', id: 55 }], prevent_self_review: true });
     expect(gh.rutas()).toContain('GET /users/po-user');
+    // El PO necesita acceso explícito (solo lectura) antes de ser revisor del environment.
+    const acceso = gh.llamadas.findIndex((l) => l.metodo === 'PUT' && l.ruta === `/repos/${ORG}/modulo-notas/collaborators/po-user`);
+    expect(gh.llamadas[acceso]?.cuerpo).toEqual({ permission: 'pull' });
+    expect(acceso).toBeLessThan(gh.llamadas.findIndex((l) => l.ruta.endsWith('/environments/aceptacion-negocio')));
+  });
+
+  it('riesgo bajo: no da acceso a usuarios (production lo aprueba el team)', async () => {
+    const gh = new GitHubFalso(ORG);
+    const { ctx } = contexto(gh);
+    await reconciliarModulo(modulo({ riesgo: 'bajo' }), ctx);
+    expect(gh.rutas('PUT').some((x) => x.includes('/collaborators/'))).toBe(false);
   });
 
   it('riesgo alto con un solo revisor: falla antes de crear nada', async () => {
