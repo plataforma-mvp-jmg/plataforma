@@ -118,7 +118,15 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
     r.acciones.push(`ruleset ${NOMBRE_RULESET} (${necesarias} aprobación/es${codeql ? ', CodeQL' : ''})`);
 
     // 7. Environments con revisores y despliegue solo desde main.
-    for (const amb of ambientesDeseados(m, ctx.teamRevisores)) {
+    const ambientes = ambientesDeseados(m, ctx.teamRevisores);
+    // Un usuario solo puede ser revisor de un environment con acceso explícito al repo: la lectura que da un repo
+    // público no alcanza (GitHub lo descarta y, con prevent_self_review, responde 422). Lectura y nada más.
+    const usuarios = new Set(ambientes.flatMap((a) => a.revisores.flatMap((rev) => (rev.tipo === 'User' ? [rev.login] : []))));
+    for (const login of usuarios) {
+      await gh.pedir('PUT', `${repo}/collaborators/${login}`, { permission: 'pull' });
+      r.acciones.push(`${login}: read (revisor de environment)`);
+    }
+    for (const amb of ambientes) {
       const reviewers = await Promise.all(amb.revisores.map((rev) => idRevisor(gh, org, rev)));
       await gh.pedir('PUT', `${repo}/environments/${amb.nombre}`, {
         reviewers,
