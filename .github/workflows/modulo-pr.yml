@@ -66,13 +66,15 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          # Autor según el evento (no editable desde el PR): Dependabot cumple GOB-06 sin la sección de IA.
+          PR_AUTOR: ${{ github.event.pull_request.user.login }}
         run: |
           pnpm --dir .plataforma install --frozen-lockfile --filter "@plataforma/policy-check..."
           pnpm --dir .plataforma --filter "@plataforma/policy-check..." build
           args=()
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr.md"
-            args=(--pr-body "$RUNNER_TEMP/pr.md")
+            args=(--pr-body "$RUNNER_TEMP/pr.md" --pr-autor "$PR_AUTOR")
           fi
           node .plataforma/packages/policy-check/dist/cli.js \
             --modulo . \

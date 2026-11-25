@@ -8,7 +8,7 @@ import { CUERPO_PR_OK, escribir, moduloValido, registro } from './fixture.js';
 const catalogo = cargarCatalogo(join(import.meta.dirname, '../../../policies/catalogo.yaml'));
 const HOY = '2026-11-15';
 
-function correr(dir: string, o: { riesgo?: 'bajo' | 'medio' | 'alto'; cuerpoPr?: string | null; excepciones?: Excepcion[]; repo?: string } = {}) {
+function correr(dir: string, o: { riesgo?: 'bajo' | 'medio' | 'alto'; cuerpoPr?: string | null; autorPr?: string; excepciones?: Excepcion[]; repo?: string } = {}) {
   return evaluar({
     dir,
     repo: o.repo ?? 'modulo-notas',
@@ -16,6 +16,7 @@ function correr(dir: string, o: { riesgo?: 'bajo' | 'medio' | 'alto'; cuerpoPr?:
     catalogo,
     excepciones: o.excepciones ?? [],
     cuerpoPr: o.cuerpoPr === undefined ? CUERPO_PR_OK : o.cuerpoPr,
+    autorPr: o.autorPr,
     hoy: HOY,
   });
 }
@@ -121,6 +122,13 @@ describe('GOB-06 · asistencia de IA', () => {
   it('"ninguna" no pide alcance; fuera de un PR no aplica', () => {
     expect(estado(correr(moduloValido(), { cuerpoPr: '## Asistencia de IA\n- Herramienta: ninguna\n## Pruebas\n' }), 'GOB-06')).toBe('ok');
     expect(estado(correr(moduloValido(), { cuerpoPr: null }), 'GOB-06')).toBe('no_aplica');
+  });
+
+  it('PR de Dependabot (autor del evento) cumple sin la sección; otro autor con el mismo cuerpo bloquea', () => {
+    const cuerpo = 'Bumps jose from 6.2.17 to 6.2.18.';
+    expect(estado(correr(moduloValido(), { cuerpoPr: cuerpo, autorPr: 'dependabot[bot]' }), 'GOB-06')).toBe('ok');
+    expect(fallas(correr(moduloValido(), { cuerpoPr: cuerpo, autorPr: 'dependabot' }), 'GOB-06')).toHaveLength(1);
+    expect(fallas(correr(moduloValido(), { cuerpoPr: cuerpo, autorPr: 'jmgarciarivoiro-tita' }), 'GOB-06')).toHaveLength(1);
   });
 });
 

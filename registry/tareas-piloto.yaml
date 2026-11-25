@@ -7,8 +7,8 @@ duenos:
   product_owner: jmgarciarivoiro-tita
   responsable_tecnico: jmgarciarivoiro-tita
 repo: modulo-tareas-piloto
-plantilla: plantilla-modulo@0.7.0
-estado: propuesto
+plantilla: plantilla-modulo@0.7.3
+estado: produccion
 riesgo: bajo
 criticidad: baja
 sox:

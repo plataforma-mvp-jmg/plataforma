@@ -20,6 +20,8 @@ export interface ContextoCheck {
   perfil: Perfil;
   /** Cuerpo del PR; null si la ejecución no es de un PR. */
   cuerpoPr: string | null;
+  /** Login del autor del PR según el evento de GitHub (no según el cuerpo); null si no se informó. */
+  autorPr: string | null;
   /** El repo evaluado es la plantilla de módulos (no figura en el registry). */
   esPlantilla: boolean;
 }
@@ -145,9 +147,16 @@ export const cadenaSuministro: Check = (ctx) => {
 // GOB-06 ------------------------------------------------------------------------------------------
 export const HERRAMIENTAS_IA = ['claude-code', 'claude', 'chatgpt', 'gemini', 'copilot', 'ninguna'];
 const ALCANCES = ['todo', 'parcial'];
+/**
+ * Autores automáticos sin IA: su PR cumple como "Herramienta: ninguna" aunque no traiga la sección.
+ * El login sale del evento de GitHub (no del cuerpo, que cualquiera edita) y GitHub no permite registrar
+ * usuarios con "[bot]", así que una persona no puede hacerse pasar por ellos.
+ */
+export const AUTORES_SIN_IA = ['dependabot[bot]'];
 
 export const asistenciaIa: Check = (ctx) => {
   if (ctx.cuerpoPr === null) return null;
+  if (ctx.autorPr !== null && AUTORES_SIN_IA.includes(ctx.autorPr)) return [];
   const sinComentarios = ctx.cuerpoPr.replace(/<!--[\s\S]*?-->/g, '');
   const seccion = /##\s*Asistencia de IA[^\n]*\n([\s\S]*?)(?=\n##\s|$)/i.exec(sinComentarios)?.[1];
   const sugerencia = `Completá en la descripción del PR: "- Herramienta: <${HERRAMIENTAS_IA.join(' / ')}>" y, si usaste IA, "- Alcance: <todo / parcial>".`;
