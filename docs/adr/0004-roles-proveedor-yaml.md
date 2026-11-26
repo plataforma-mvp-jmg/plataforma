@@ -22,5 +22,6 @@ de Google Workspace (ADR-081); en el MVP no hay Workspace.
 
 ## Consecuencias
 
-- La expansión de jerarquías (`operador` incluye `lector`) se resuelve con los manifiestos en I1-5.
+- ~~La expansión de jerarquías (`operador` incluye `lector`) se resuelve con los manifiestos en I1-5.~~
+  Reemplazado por la ADR 0016: los roles son explícitos, sin jerarquía.
 - En la Fase 1.5 se agrega `ProveedorRolesWorkspace` (Directory API) sin cambiar rutas ni módulos.
