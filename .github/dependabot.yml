@@ -18,3 +18,8 @@ updates:
     groups:
       npm:
         patterns: ['*']
+    ignore:
+      # TypeScript 7 todavía no es compatible con typescript-eslint (peer <6.1; ADR 0001).
+      # Revisar cuando typescript-eslint lo soporte: con el salto mayor adentro, el PR agrupado entero queda en rojo.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
