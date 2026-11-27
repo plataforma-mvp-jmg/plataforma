@@ -18,7 +18,7 @@ const esquema = z
     APP_DIGEST: z.string().default('desconocido'),
 
     // Identidad (I1-1). Si falta OIDC_CLIENT_ID, el login queda deshabilitado (503).
-    PLATFORM_URL_PUBLICA: z.url().default('http://localhost:8080'),
+    PLATFORM_URL_PUBLICA: z.url().default('http://localhost:8088'),
     OIDC_ISSUER: z.url().default('https://accounts.google.com'),
     OIDC_CLIENT_ID: opcional(z.string().min(1)),
     OIDC_CLIENT_SECRET: opcional(z.string().min(1)),
@@ -27,7 +27,7 @@ const esquema = z
     SESSION_TTL_MIN: z.coerce.number().int().min(5).max(1440).default(480),
 
     // JWT de plataforma (I1-2). Sin clave privada se usa una efímera (solo ENTORNO=local).
-    PLATFORM_ISSUER: z.url().default('http://localhost:8080'),
+    PLATFORM_ISSUER: z.url().default('http://localhost:8088'),
     PLATFORM_JWT_PRIVATE_JWK: opcional(z.string().min(1)),
     PLATFORM_JWT_PUBLIC_JWK_ANTERIOR: opcional(z.string().min(1)),
 
