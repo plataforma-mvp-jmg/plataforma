@@ -64,8 +64,9 @@ jobs:
           docker run --rm --entrypoint sh plataforma-workspace:ci -c '
             claude --version
             if touch /etc/claude-code/x 2>/dev/null; then echo "/etc/claude-code es escribible"; exit 1; fi
-            if : > /etc/claude-code/managed-settings.json 2>/dev/null; then echo "managed-settings.json es escribible"; exit 1; fi
-            if : > /opt/plataforma/hooks/bash-guard.sh 2>/dev/null; then echo "los hooks son escribibles"; exit 1; fi
+            # Entre paréntesis: en sh, una redirección fallida sobre ":" corta el script entero.
+            if (: > /etc/claude-code/managed-settings.json) 2>/dev/null; then echo "managed-settings.json es escribible"; exit 1; fi
+            if (: > /opt/plataforma/hooks/bash-guard.sh) 2>/dev/null; then echo "los hooks son escribibles"; exit 1; fi
             jq -e ".allowManagedPermissionRulesOnly and .allowManagedHooksOnly" /etc/claude-code/managed-settings.json'
 
   resumen:
