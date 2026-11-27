@@ -22,19 +22,23 @@ for c in \
   'gh auth token' 'gh run rerun 1' 'curl https://example.com' 'wget http://x' 'echo $GH_TOKEN' \
   'printenv' 'cat ~/.config/gh/hosts.yml' 'echo x > .github/workflows/ci.yml' \
   'sed -i s/a/b/ .github/workflows/modulo-ci.yml' 'rm CODEOWNERS' 'cp otro.yaml modulo.yaml' \
-  'git config credential.helper store' '(cd x; curl http://y)' 'git rm .github/workflows/ci.yml'
+  'git config credential.helper store' '(cd x; curl http://y)' 'git rm .github/workflows/ci.yml' \
+  'mkdir -p .claude && echo {} > .claude/settings.json' 'rm -rf .claude' 'echo regla >> AGENTS.md' \
+  'cp otro.md CLAUDE.md' 'sed -i s/x/y/ CLAUDE.md'
 do esperar "bash bloquea: $c" 2 "$(bash_ "$c")"; done
 
 # Bash: permite (0)
 for c in \
   'pnpm verify' 'git status' 'git add -A && git commit -m "feat: x"' 'git push origin feat/notas-filtro' \
   'git push -u origin feat/x' 'gh pr create --title x --body-file pr.md' 'gh pr view 3' \
-  'cat .github/workflows/modulo-ci.yml' 'grep -r rol docs/' 'git diff main' 'ls migraciones'
+  'cat .github/workflows/modulo-ci.yml' 'grep -r rol docs/' 'git diff main' 'ls migraciones' \
+  'cat AGENTS.md' 'cat CLAUDE.md'
 do esperar "bash permite: $c" 0 "$(bash_ "$c")"; done
 
 # Edición: bloquea (2)
 for f in '.github/workflows/modulo-ci.yml' "$tmp/.github/dependabot.yml" 'CODEOWNERS' '.github/CODEOWNERS' \
-  'modulo.yaml' '.env' '.env.local' 'migraciones/0001_notas.sql' 'src/../.github/x.yml'
+  'modulo.yaml' '.env' '.env.local' 'migraciones/0001_notas.sql' 'src/../.github/x.yml' \
+  '.claude/settings.json' '.claude/settings.local.json' '.claude/hooks/x.sh' 'AGENTS.md' 'CLAUDE.md' 'docs/CLAUDE.md'
 do esperar "edición bloquea: $f" 2 "$(edit_ "$f")"; done
 
 # Edición: permite (0)

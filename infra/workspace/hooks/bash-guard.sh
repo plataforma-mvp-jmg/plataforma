@@ -24,8 +24,8 @@ s='(^|[[:space:];&|()`])'
 [[ "$cmd" =~ (GH_TOKEN|GITHUB_TOKEN|ANTHROPIC_API_KEY|\.config/gh|\.claude/\.credentials) ]] && bloquear "acceso a credenciales"
 [[ "$cmd" =~ ${s}(printenv|env)([[:space:]]|$) ]] && bloquear "listar variables de entorno expone credenciales"
 # Escritura sobre archivos que gobierna Sistemas por fuera de las herramientas de edición.
-if [[ "$cmd" =~ (\.github/|CODEOWNERS|modulo\.yaml|/etc/claude-code|/opt/plataforma) ]] \
+if [[ "$cmd" =~ (\.github/|CODEOWNERS|modulo\.yaml|/etc/claude-code|/opt/plataforma|\.claude/|\.claude[[:space:]]|\.claude$|AGENTS\.md|CLAUDE\.md|CLAUDE\.local\.md) ]] \
    && [[ "$cmd" =~ ([>]|${s}(tee|sed[[:space:]]+-i|perl[[:space:]]+-i|rm|mv|cp|chmod|chown|truncate|install|ln|git[[:space:]]+(rm|mv|checkout|restore))[[:space:]]) ]]; then
-  bloquear "los archivos de .github/, CODEOWNERS, modulo.yaml y la configuración del Studio los cambia Sistemas"
+  bloquear "los archivos de .github/, CODEOWNERS, modulo.yaml, las instrucciones de la IA (.claude/, AGENTS.md, CLAUDE.md) y la configuración del Studio los cambia Sistemas"
 fi
 exit 0
