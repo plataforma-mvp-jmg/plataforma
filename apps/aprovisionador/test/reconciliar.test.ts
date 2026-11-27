@@ -204,6 +204,30 @@ describe('CodeQL (SEG-10)', () => {
     expect(gh.rutas('PATCH')).not.toContain(`PATCH /repos/${ORG}/modulo-notas/code-scanning/default-setup`);
     expect(reglas(gh).map((x) => x.type)).toContain('code_scanning');
   });
+
+  it('módulo con CodeQL avanzado (plantilla >= 0.7.7): apaga la configuración por defecto y sigue exigiendo CodeQL', async () => {
+    const gh = new GitHubFalso(ORG);
+    gh.repos.add('modulo-notas');
+    gh.ramas.add('modulo-notas:main');
+    gh.archivos.add('modulo-notas:modulo.yaml');
+    gh.codeql.set('modulo-notas', 'configured');
+    gh.contenidos.set(
+      'modulo-notas:.github/workflows/modulo-ci.yml',
+      'jobs:\n  codeql:\n    uses: org/plataforma/.github/workflows/modulo-codeql.yml@1459243dbbf67c1b6580a692056c41436e95705f\n',
+    );
+    const { ctx } = contexto(gh);
+    const r = await reconciliarModulo(modulo(), ctx);
+    expect(r.acciones).toContain('CodeQL por defecto desactivado (usa modulo-codeql.yml)');
+    expect(gh.llamadas.find((l) => l.metodo === 'PATCH' && l.ruta.endsWith('/default-setup'))?.cuerpo).toEqual({ state: 'not-configured' });
+    expect(reglas(gh).map((x) => x.type)).toContain('code_scanning');
+
+    // Segunda corrida: ya apagada, no la toca (y nunca la vuelve a activar).
+    gh.llamadas = [];
+    const r2 = await reconciliarModulo(modulo(), ctx);
+    expect(r2.acciones).not.toContain('CodeQL activado');
+    expect(r2.acciones).not.toContain('CodeQL por defecto desactivado (usa modulo-codeql.yml)');
+    expect(gh.rutas('PATCH')).not.toContain(`PATCH /repos/${ORG}/modulo-notas/code-scanning/default-setup`);
+  });
 });
 
 describe('resumenMarkdown', () => {

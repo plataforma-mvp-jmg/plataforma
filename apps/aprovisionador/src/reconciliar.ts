@@ -94,13 +94,22 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
       r.acciones.push('main inicializada');
     }
 
-    // 5. CodeQL con configuración por defecto (SEG-10). Necesita código en main: en un repo nuevo
-    //    queda pendiente hasta que se mergea el PR inicial (lo toma la corrida programada).
+    // 5. CodeQL (SEG-10). Necesita código en main: en un repo nuevo queda pendiente hasta que se mergea el
+    //    PR inicial (lo toma la corrida programada). Con plantilla >= 0.7.7 el análisis lo hace el workflow
+    //    modulo-codeql.yml (ADR 0018) y la configuración por defecto se apaga; antes, se usa la por defecto.
     const tieneContenido = await gh.buscar(`${repo}/contents/modulo.yaml`);
     let codeql = false;
     if (tieneContenido) {
       const ds = await gh.pedir<{ state: string }>('GET', `${repo}/code-scanning/default-setup`);
-      if (ds.state !== 'configured') {
+      if (await usaCodeqlAvanzado(gh, repo)) {
+        // ADR 0018: el módulo llama a modulo-codeql.yml. La configuración por defecto tiene que estar apagada
+        // (si no, GitHub rechaza los resultados del workflow) y no analiza los PRs de Dependabot.
+        if (ds.state !== 'not-configured') {
+          await gh.pedir('PATCH', `${repo}/code-scanning/default-setup`, { state: 'not-configured' });
+          r.acciones.push('CodeQL por defecto desactivado (usa modulo-codeql.yml)');
+        }
+      } else if (ds.state !== 'configured') {
+        // Módulo con plantilla anterior a 0.7.7: sigue con la configuración por defecto hasta actualizarse.
         await gh.pedir('PATCH', `${repo}/code-scanning/default-setup`, { state: 'configured', query_suite: 'default' });
         r.acciones.push('CodeQL activado');
       }
@@ -156,6 +165,13 @@ export async function reconciliarModulo(m: ModuloRegistry, ctx: Contexto): Promi
     return { ...r, estado: 'error', error: err instanceof Error ? err.message : String(err) };
   }
   return r;
+}
+
+/** main del módulo llama al workflow de CodeQL avanzado de la plataforma (plantilla >= 0.7.7, ADR 0018). */
+async function usaCodeqlAvanzado(gh: ClienteGitHub, repo: string): Promise<boolean> {
+  const archivo = await gh.buscar<{ content?: string }>(`${repo}/contents/.github/workflows/modulo-ci.yml`);
+  if (!archivo?.content) return false;
+  return Buffer.from(archivo.content, 'base64').toString('utf8').includes('/.github/workflows/modulo-codeql.yml@');
 }
 
 async function idRevisor(gh: ClienteGitHub, org: string, rev: Revisor) {
