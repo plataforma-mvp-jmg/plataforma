@@ -51,11 +51,28 @@ jobs:
           docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:v2.7.1
           scan source --lockfile /src/pnpm-lock.yaml
 
+  workspace:
+    # Imagen del Studio (ADR 0019): el build corre las pruebas de los hooks y falla si alguna no pasa.
+    name: workspace (imagen y hooks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build --progress=plain -t plataforma-workspace:ci infra/workspace
+      - name: Settings administrados de solo lectura para el usuario del workspace
+        run: |
+          docker run --rm --entrypoint sh plataforma-workspace:ci -c '
+            claude --version
+            if touch /etc/claude-code/x 2>/dev/null; then echo "/etc/claude-code es escribible"; exit 1; fi
+            if : > /etc/claude-code/managed-settings.json 2>/dev/null; then echo "managed-settings.json es escribible"; exit 1; fi
+            if : > /opt/plataforma/hooks/bash-guard.sh 2>/dev/null; then echo "los hooks son escribibles"; exit 1; fi
+            jq -e ".allowManagedPermissionRulesOnly and .allowManagedHooksOnly" /etc/claude-code/managed-settings.json'
+
   resumen:
     # Único check requerido por el ruleset: falla si cualquier job anterior falla.
     name: resumen
     if: always()
-    needs: [calidad, secretos, dependencias]
+    needs: [calidad, secretos, dependencias, workspace]
     runs-on: ubuntu-latest
     steps:
       - name: Verificar resultados

@@ -10,6 +10,14 @@ updates:
     groups:
       acciones:
         patterns: ['*']
+  - package-ecosystem: docker
+    # Imagen del workspace del Studio (ADR 0019): digests de code-server y Node.
+    directory: /infra/workspace
+    schedule: { interval: weekly }
+    labels: [dependencias]
+    groups:
+      imagenes:
+        patterns: ['*']
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
