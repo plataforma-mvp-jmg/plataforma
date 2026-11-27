@@ -27,14 +27,10 @@ export function jwtDeApp(clientId: string, clave: KeyObject, ahoraSeg: number): 
   return `${encabezado}.${cuerpo}.${b64url(firma)}`;
 }
 
-export function crearProveedorTokenApp(o: OpcionesApp): () => Promise<string> {
+function crearPedidorApp(o: Pick<OpcionesApp, 'api' | 'fetchFn'>) {
   const api = o.api ?? 'https://api.github.com';
   const f = o.fetchFn ?? fetch;
-  const ahora = o.ahora ?? Date.now;
-  const clave = createPrivateKey(o.clavePrivada);
-  let cache: { token: string; vence: number } | null = null;
-
-  const pedir = async <T>(metodo: string, ruta: string, jwt: string, cuerpo?: unknown): Promise<T> => {
+  return async <T>(metodo: string, ruta: string, jwt: string, cuerpo?: unknown): Promise<T> => {
     const res = await f(`${api}${ruta}`, {
       method: metodo,
       headers: {
@@ -48,6 +44,13 @@ export function crearProveedorTokenApp(o: OpcionesApp): () => Promise<string> {
     if (!res.ok) throw new Error(`GitHub App: ${metodo} ${ruta} → ${res.status}`);
     return (await res.json()) as T;
   };
+}
+
+export function crearProveedorTokenApp(o: OpcionesApp): () => Promise<string> {
+  const pedir = crearPedidorApp(o);
+  const ahora = o.ahora ?? Date.now;
+  const clave = createPrivateKey(o.clavePrivada);
+  let cache: { token: string; vence: number } | null = null;
 
   return async () => {
     if (cache && cache.vence - ahora() > 5 * 60_000) return cache.token;
@@ -56,5 +59,53 @@ export function crearProveedorTokenApp(o: OpcionesApp): () => Promise<string> {
     const t = await pedir<{ token: string; expires_at: string }>('POST', `/app/installations/${inst.id}/access_tokens`, jwt, o.permisos ? { permissions: o.permisos } : undefined);
     cache = { token: t.token, vence: Date.parse(t.expires_at) };
     return t.token;
+  };
+}
+
+export interface TokenRepo {
+  token: string;
+  vence: Date;
+  repo: string;
+}
+
+export type OpcionesEmisorRepo = Omit<OpcionesApp, 'permisos'> & { permisos: Record<string, 'read' | 'write'> };
+
+/**
+ * Emite un token de instalación acotado a UN repositorio y a los permisos pedidos (sin caché:
+ * cada workspace recibe el suyo). Verifica la respuesta de GitHub: si el token alcanzara otro
+ * repo o algún permiso no pedido (o más amplio), lo rechaza en vez de entregarlo.
+ */
+export function crearEmisorTokensRepo(o: OpcionesEmisorRepo): (repo: string) => Promise<TokenRepo> {
+  const pedir = crearPedidorApp(o);
+  const ahora = o.ahora ?? Date.now;
+  const clave = createPrivateKey(o.clavePrivada);
+  let idInstalacion: number | null = null;
+
+  return async (repo: string) => {
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo)) throw new Error('GitHub App: nombre de repo inválido');
+    const jwt = jwtDeApp(o.clientId, clave, Math.floor(ahora() / 1000));
+    if (idInstalacion === null) {
+      idInstalacion = (await pedir<{ id: number }>('GET', `/orgs/${o.org}/installation`, jwt)).id;
+    }
+    const t = await pedir<{
+      token: string;
+      expires_at: string;
+      permissions?: Record<string, string>;
+      repository_selection?: string;
+      repositories?: { name: string }[];
+    }>('POST', `/app/installations/${idInstalacion}/access_tokens`, jwt, { repositories: [repo], permissions: o.permisos });
+
+    const repos = (t.repositories ?? []).map((r) => r.name);
+    if (t.repository_selection !== 'selected' || repos.length !== 1 || repos[0] !== repo) {
+      throw new Error(`GitHub App: el token emitido no está acotado al repo ${repo}`);
+    }
+    for (const [permiso, nivel] of Object.entries(t.permissions ?? {})) {
+      const pedido = o.permisos[permiso];
+      if (permiso === 'metadata' && nivel === 'read') continue;
+      if (!pedido || (pedido === 'read' && nivel !== 'read')) {
+        throw new Error(`GitHub App: el token emitido trae un permiso no pedido (${permiso}:${nivel})`);
+      }
+    }
+    return { token: t.token, vence: new Date(t.expires_at), repo };
   };
 }
