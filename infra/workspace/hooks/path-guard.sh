@@ -19,6 +19,9 @@ bloquear() {
 
 case "/$ruta/" in */.github/*) bloquear "los workflows y la configuración de .github/ los cambia Sistemas" ;; esac
 [ "$base" = "CODEOWNERS" ] && bloquear "CODEOWNERS lo cambia Sistemas"
+# Instrucciones y configuración de la IA del módulo (prueba real de I5-1: la IA creó .claude/settings.json).
+case "/$ruta/" in */.claude/*) bloquear "la configuración de Claude Code del proyecto la define Sistemas" ;; esac
+case "$base" in AGENTS.md|CLAUDE.md|CLAUDE.local.md) bloquear "las instrucciones para la IA las cambia Sistemas" ;; esac
 [ "$base" = "modulo.yaml" ] && bloquear "el manifiesto del módulo lo cambia Sistemas"
 case "$base" in .env|.env.*) bloquear "los archivos .env no se tocan desde el Studio" ;; esac
 # Migraciones ya existentes: solo se agregan nuevas (regla 8 de AGENTS.md).

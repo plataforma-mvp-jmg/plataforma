@@ -32,7 +32,7 @@ imagen con versiones fijas y controles que el usuario no pueda cambiar desde ade
 - **Hooks** (root, `0555`), porque las reglas `Bash(...)` solo miran el comienzo del comando:
   - `bash-guard.sh` revisa el comando entero, incluidos los encadenados: push forzado o directo a `main`, cambios en la configuración de git, operaciones de GitHub reservadas a personas, salida a internet, acceso a credenciales y escritura sobre los archivos de Sistemas;
   - `path-guard.sh` bloquea editar `.github/`, `CODEOWNERS`, `modulo.yaml`, `.env*` y **migraciones ya existentes** (las nuevas se permiten).
-- **`probar-hooks.sh`:** 50 casos (que bloquee lo que debe y deje pasar lo legítimo). Corre en el `docker build`: si falla, la imagen no se construye. La CI de `plataforma` construye la imagen y verifica que los settings y los hooks no sean escribibles por el usuario.
+- **`probar-hooks.sh`:** 68 casos (que bloquee lo que debe y deje pasar lo legítimo). Corre en el `docker build`: si falla, la imagen no se construye. La CI de `plataforma` construye la imagen y verifica que los settings y los hooks no sean escribibles por el usuario.
 
 ## Consecuencias
 
@@ -41,10 +41,12 @@ imagen con versiones fijas y controles que el usuario no pueda cambiar desde ade
   - el token de la GitHub App del workspace (I5-2), sin permiso sobre workflows ni administración;
   - el ruleset (PR obligatorio, aprobación de Sistemas, el último push lo aprueba otra persona);
   - la CI.
-- **Probado en la PC:** el build corre las 50 pruebas en verde. El usuario `coder` no puede crear ni
+- **Probado en la PC:** el build corre las 68 pruebas en verde. El usuario `coder` no puede crear ni
   sobrescribir archivos en `/etc/claude-code` ni actualizar Claude Code (`npm install -g` falla).
-- **[A validar en I5-3, con sesión iniciada]:**
-  - que Claude Code aplique los settings administrados (por ejemplo, que rechace editar `.github/`);
-  - que `DISABLE_AUTOUPDATER=1` evite el intento de actualización.
+- **Probado con sesión iniciada (27/11, cuenta del responsable):**
+  - Claude Code aplicó los hooks: crear `.github/workflows/x.yml` y correr `curl` quedaron bloqueados con el mensaje de la plataforma; crear `src/hola.ts` funcionó.
+  - **Hallazgo:** en la misma prueba, la IA **creó `.claude/settings.json`** en el proyecto con sus propias reglas. No las aplicó, porque las de la plataforma mandan (`allowManagedPermissionRulesOnly` / `allowManagedHooksOnly`). Pero ese archivo acepta otras claves y queda versionado en el repo.
+  - **Corrección:** `.claude/`, `AGENTS.md` y `CLAUDE.md` quedan protegidos, en `path-guard`, en `bash-guard` y en las reglas `deny`, con casos nuevos en las pruebas.
+- **[A validar]:** que `DISABLE_AUTOUPDATER=1` evite el intento de actualización.
 - La salida de red restringida (SEG-16, doc 05) no está en la imagen: va en la red del contenedor (I5-3).
 - Actualizar Claude Code o code-server es un PR que cambia el `ARG` o el digest y pasa por la CI.
