@@ -47,10 +47,12 @@ const gh = async (metodo, ruta, cuerpo) => {
 };
 const b64 = (s) => Buffer.from(s).toString('base64');
 
-// 1. No alcanza otros repos.
+// 1. No puede escribir en otros repos. (Leerlos sí puede si son públicos: eso no lo da el token.)
 for (const otro of ['plataforma', 'plantilla-modulo']) {
-  const r = await gh('GET', `/repos/${ORG}/${otro}`);
-  comprobar(`sin acceso a ${otro}`, r.status === 404, `HTTP ${r.status}`);
+  const ref = await gh('GET', `/repos/${ORG}/${otro}/git/ref/heads/main`);
+  const intento = await gh('POST', `/repos/${ORG}/${otro}/git/refs`, { ref: `refs/heads/t8/no-deberia-${Date.now()}`, sha: ref.json.object?.sha });
+  if (intento.status === 201) await gh('DELETE', `/repos/${ORG}/${otro}/git/${intento.json.ref}`);
+  comprobar(`no puede escribir en ${otro}`, intento.status === 403 || intento.status === 404, `HTTP ${intento.status}`);
 }
 
 // 2. Rama de prueba desde main.

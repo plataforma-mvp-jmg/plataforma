@@ -1,6 +1,6 @@
 # ADR 0020 — Token de GitHub del workspace: GitHub App propia, 1 hora, un solo repo
 
-- Estado: aceptado (pendiente la prueba T8 contra GitHub real)
+- Estado: aceptado (T8 verificada contra GitHub real el 2026-11-27)
 - Fecha: 2026-11-27
 - Relacionados: ADR 0017 (deployer), ADR 0019 (imagen del workspace), R-7, SEG-16
 
@@ -46,6 +46,20 @@ deployments y estados, el workspace escribe código).
 ## Verificación (T8)
 
 `node packages/github/scripts/t8-token-workspace.mjs modulo-tareas-piloto` comprueba, con la App
-real: sin acceso a `plataforma` ni a la plantilla; crea rama; rechaza escribir en
-`.github/workflows`; commitea en su rama; rechaza escribir directo en `main`; abre PR; no puede
-mergear; limpia (cierra el PR y borra la rama).
+real, y limpia al final (cierra el PR y borra la rama):
+
+| Comprobación | Resultado 2026-11-27 |
+|---|---|
+| Token acotado a `modulo-tareas-piloto` | OK |
+| No puede escribir en `plataforma` / `plantilla-modulo` | OK (403 / 403) |
+| Crea rama | OK (201) |
+| Rechaza escribir en `.github/workflows` | OK (403) |
+| Commitea en su rama | OK (201) |
+| Rechaza escribir directo en `main` | OK (409, ruleset) |
+| Abre PR | OK (201) |
+| No puede mergear | OK (405) |
+| Limpieza | OK (204) |
+
+Hallazgo: los repos del MVP son públicos (P7), así que el token **puede leer** `plataforma` y la
+plantilla, como cualquier visitante. El acotamiento protege la escritura; la confidencialidad de un
+repo privado dependería de que la App no esté instalada en él o del acotamiento del punto 2.
