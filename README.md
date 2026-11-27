@@ -26,7 +26,7 @@ Con Docker:
 ```bash
 cp infra/local/.env.example infra/local/.env   # completar PG_DEV_PASSWORD
 docker compose -f infra/local/docker-compose.yml up --build
-curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8088/health
 ```
 
 ## Endpoints de sistema (contrato E4)
@@ -40,8 +40,8 @@ curl http://127.0.0.1:8080/health
 ## Login con Google (I1-1)
 
 1. Completar en `infra/local/.env`: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` y `SESSION_SECRET` (ver `.env.example`).
-2. En Google Cloud, el URI de redirección autorizado debe ser `http://localhost:8080/auth/callback`.
-3. `pnpm dev` y abrir `http://localhost:8080/auth/login?returnTo=/auth/me`.
+2. En Google Cloud, el URI de redirección autorizado debe ser `http://localhost:8088/auth/callback`.
+3. `pnpm dev` y abrir `http://localhost:8088/auth/login?returnTo=/auth/me`.
 
 | Endpoint | Qué hace |
 |---|---|
@@ -80,9 +80,9 @@ const claims = await verificar(tokenDeHeader(req.headers.authorization) ?? '');
 
 ## Gateway de módulos (I1-4)
 
-`pnpm dev` levanta la API (8080) y el **módulo de ejemplo** (`apps/modulo-ejemplo`, 3101).
+`pnpm dev` levanta la API (8088) y el **módulo de ejemplo** (`apps/modulo-ejemplo`, 3101).
 Con `GATEWAY_MODULOS=modulo-ejemplo=http://127.0.0.1:3101` en el `.env`, abrir
-`http://localhost:8080/m/modulo-ejemplo/`.
+`http://localhost:8088/m/modulo-ejemplo/`.
 
 En cada request a `/m/<id>/…` el gateway:
 
@@ -95,7 +95,7 @@ En cada request a `/m/<id>/…` el gateway:
 
 ## Shell (I1-5)
 
-`http://localhost:8080/` es la pantalla de los usuarios finales (React + Vite + Mantine, en
+`http://localhost:8088/` es la pantalla de los usuarios finales (React + Vite + Mantine, en
 `apps/shell`). Muestra solo los módulos del **registry** (`registry/<id>.yaml`) que están montados
 en el gateway y en los que el usuario tiene algún rol; cada módulo se abre dentro del Shell.
 

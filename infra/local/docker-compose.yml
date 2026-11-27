@@ -28,7 +28,7 @@ services:
       HOST: 0.0.0.0             # dentro del contenedor; afuera solo se publica en 127.0.0.1
       ENTORNO: local
     ports:
-      - "127.0.0.1:8080:3000"   # solo localhost; la exposición es Cloudflare (I7)
+      - "127.0.0.1:8088:3000"   # solo localhost; la exposición es Cloudflare (I7)
     depends_on:
       postgres-dev:
         condition: service_healthy
