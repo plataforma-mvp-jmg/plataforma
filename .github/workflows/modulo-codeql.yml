@@ -1,0 +1,41 @@
+# Workflow reutilizable de CodeQL (configuración avanzada) para todo módulo y la plantilla (ADR 0018).
+# Cada módulo lo llama FIJADO POR SHA desde .github/workflows/modulo-ci.yml, como los demás controles.
+#
+# Por qué no la configuración por defecto: no analiza los PRs de Dependabot y el ruleset (code_scanning)
+# exige resultados, así que esos PRs quedaban bloqueados. Con el evento pull_request, code scanning acepta
+# los resultados también en los PRs de Dependabot.
+#
+# Las categorías (/language:<lenguaje>) son las mismas que usaba la configuración por defecto: así los PRs
+# se comparan contra los análisis que ya tiene main y no aparecen "configurations not found".
+# Requisito: la configuración por defecto tiene que estar desactivada (si no, GitHub rechaza la subida).
+name: modulo-codeql
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  analizar:
+    name: CodeQL (${{ matrix.lenguaje }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        lenguaje: [javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+        with:
+          languages: ${{ matrix.lenguaje }}
+          build-mode: none
+          # Misma suite que la configuración por defecto ("default"): cambiarla puede abrir alertas nuevas.
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+        with:
+          category: /language:${{ matrix.lenguaje }}
