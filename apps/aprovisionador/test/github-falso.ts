@@ -12,6 +12,8 @@ export class GitHubFalso implements ClienteGitHub {
   repos = new Set<string>();
   ramas = new Set<string>();
   archivos = new Set<string>();
+  /** Archivos con contenido ("repo:ruta" → texto): la API los devuelve en base64. */
+  contenidos = new Map<string, string>();
   rulesets = new Map<string, { id: number; name: string }[]>();
   politicas = new Map<string, string[]>();
   miembrosTeam = 1;
@@ -44,7 +46,10 @@ export class GitHubFalso implements ClienteGitHub {
       return r({});
     }
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/contents\/(.+)$/.exec(ruta))) {
-      if (!this.archivos.has(`${m[1]}:${m[2]}`)) throw new ErrorGitHub(404, metodo, ruta, 'Not Found');
+      const clave = `${m[1]}:${m[2]}`;
+      const texto = this.contenidos.get(clave);
+      if (texto !== undefined) return r({ content: Buffer.from(texto, 'utf8').toString('base64') });
+      if (!this.archivos.has(clave)) throw new ErrorGitHub(404, metodo, ruta, 'Not Found');
       return r({});
     }
     if ((m = /^\/repos\/[^/]+\/([^/]+)\/labels(?:\/(.+))?$/.exec(ruta))) {

@@ -1,6 +1,9 @@
 # ADR 0018 — CodeQL con configuración avanzada en los módulos
 
-- Estado: propuesto (27/11/2026) · Consolidación de I4. Se acepta después de la prueba en `plantilla-modulo`.
+- Estado: aceptado (27/11/2026) · Consolidación de I4. Probado en `plantilla-modulo` (PR #20, plantilla 0.7.7):
+  con la configuración por defecto apagada, el workflow subió resultados de los dos lenguajes y el check
+  `CodeQL` del ruleset dio *No new alerts in code changed by this pull request*, sin "configurations not found".
+  Queda por ver en real el primer PR de Dependabot con el workflow.
 - Modifica la ADR del I3-3 (CodeQL por defecto activado por el aprovisionador).
 
 ## Contexto
@@ -43,6 +46,9 @@ se hacen seguidos.
 - Los PRs de Dependabot se analizan y se pueden mergear sin intervención.
 - La versión de CodeQL la fija la plataforma (acción por SHA, actualizada por Dependabot en `plataforma`),
   no GitHub por su cuenta.
-- El aprovisionador deja de activar la configuración por defecto y pasa a desactivarla (PR aparte, después de la prueba).
+- El aprovisionador apaga la configuración por defecto en los módulos cuyo `modulo-ci.yml` llama a
+  `modulo-codeql.yml`. En los que todavía no lo llaman, la sigue activando, así no quedan sin análisis.
+  Como solo la apaga cuando el workflow ya está en `main`, el PR de transición de un módulo existente se hace
+  apagándola a mano justo antes (orden de transición) y mergeándolo enseguida, antes de la corrida diaria.
 - Riesgo: un módulo que no llame al workflow queda sin análisis y, con la regla `code_scanning`, sin poder
   mergear. Es un fallo seguro (bloquea, no deja pasar), y `modulo-ci.yml` lo protege CODEOWNERS.
