@@ -193,6 +193,7 @@ diarios en `infra/local/estado/logs/`.
 2. `pnpm --filter "@plataforma/deployer..." build`
 3. `.\infra\local\instalar-deployers.ps1 -Iniciar` (sin permisos de administrador).
 
-Después de actualizar `plataforma`: recompilar y reiniciar las tareas
-(`Stop-ScheduledTask` / `Start-ScheduledTask -TaskName "Plataforma MVP - deployer staging"`, ídem `production`).
+Después de actualizar `plataforma` o cambiar `infra/local/deployer*.env`: recompilar y reiniciar con
+`.\infra\local\instalar-deployers.ps1 -Reiniciar`. No usar solo `Stop-ScheduledTask`: corta el PowerShell de la
+tarea pero deja corriendo el `node` del deployer con la configuración vieja.
 Para quitarlas: `.\infra\local\instalar-deployers.ps1 -Desinstalar`.

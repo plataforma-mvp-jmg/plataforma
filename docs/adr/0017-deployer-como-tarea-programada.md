@@ -36,8 +36,11 @@ iniciar sesión. Decisión del responsable del área.
   Es aceptable en el MVP; en la versión corporativa los deployers corren en el servidor o servicio de
   contenedores elegido (doc 09), no en una PC.
 - **Compilación:** las tareas usan `apps/deployer/dist`. Después de actualizar `plataforma` hay que
-  recompilar (`pnpm --filter "@plataforma/deployer..." build`) y reiniciar las tareas
-  (`Stop-ScheduledTask` y `Start-ScheduledTask`, o cerrar y volver a abrir la sesión).
+  recompilar (`pnpm --filter "@plataforma/deployer..." build`) y reiniciar con
+  `instalar-deployers.ps1 -Reiniciar`.
+- **Hallazgo (27/11/2026):** `Stop-ScheduledTask` corta el PowerShell de la tarea pero **no** el `node` que
+  lanzó. Ese proceso queda huérfano con la configuración vieja, y la tarea no vuelve a arrancar mientras
+  siga vivo. Por eso `-Reiniciar` y `-Desinstalar` también cortan los procesos `node` del deployer.
 - **No correr dos deployers del mismo entorno a la vez** (uno a mano y otro por la tarea): los dos
   tomarían los mismos pedidos. Antes de instalar las tareas hay que cerrar los que estén abiertos a mano.
 - **Secretos:** siguen en `infra/local/deployer*.env`, fuera de Git; la tarea corre con el mismo usuario
