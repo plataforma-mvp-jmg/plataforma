@@ -182,3 +182,17 @@ crea el pedido. El deployer de producción verifica las aprobaciones por API (AD
 
 Con `GATEWAY_MAPA_PATH` en el `.env`, la API monta esos módulos en `/m/<id>/` y los relee en caliente,
 sin reiniciar (ADR 0013). El Shell los muestra a quien tenga rol en el módulo.
+
+### Deployers como tareas programadas (I5)
+
+Para no depender de una terminal abierta, los dos deployers pueden correr como tareas programadas que
+arrancan al iniciar sesión (ADR 0017): esperan a Docker, se reinician solos si terminan y guardan logs
+diarios en `infra/local/estado/logs/`.
+
+1. Cerrar los deployers que estén abiertos a mano: dos deployers del mismo entorno tomarían los mismos pedidos.
+2. `pnpm --filter "@plataforma/deployer..." build`
+3. `.\infra\local\instalar-deployers.ps1 -Iniciar` (sin permisos de administrador).
+
+Después de actualizar `plataforma`: recompilar y reiniciar las tareas
+(`Stop-ScheduledTask` / `Start-ScheduledTask -TaskName "Plataforma MVP - deployer staging"`, ídem `production`).
+Para quitarlas: `.\infra\local\instalar-deployers.ps1 -Desinstalar`.
